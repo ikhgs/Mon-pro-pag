@@ -1,53 +1,93 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const { handleMessage } = require('./handles/handleMessage');
-const { handlePostback } = require('./handles/handlePostback');
-require('dotenv').config();
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const { handleMessage } = require("./handles/handleMessage");
+const { handlePostback } = require("./handles/handlePostback");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
+// Utiliser bodyParser pour les requêtes JSON
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Endpoint pour vérifier le webhook
-app.get('/webhook', (req, res) => {
-    let VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+// PAGE_ACCESS_TOKEN depuis le fichier .env
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
-    let mode = req.query['hub.mode'];
-    let token = req.query['hub.verify_token'];
-    let challenge = req.query['hub.challenge'];
+// Vérification de la validité du token
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-    if (mode && token) {
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-            console.log('WEBHOOK_VERIFIED');
-            res.status(200).send(challenge);
-        } else {
-            res.sendStatus(403);
-        }
-    }
+// Importer l'API Messenger pour envoyer des messages
+const request = require('request');
+
+// Route pour la vérification du webhook
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode && token === VERIFY_TOKEN) {
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send("Invalid token");
+  }
 });
 
-// Endpoint pour recevoir les messages
-app.post('/webhook', (req, res) => {
-    let body = req.body;
+// Route pour recevoir les messages
+app.post("/webhook", (req, res) => {
+  const body = req.body;
 
-    if (body.object === 'page') {
-        body.entry.forEach(entry => {
-            let event = entry.messaging[0];
+  if (body.object === "page") {
+    body.entry.forEach((entry) => {
+      const event = entry.messaging[0];
 
-            if (event.message) {
-                handleMessage(event);
-            } else if (event.postback) {
-                handlePostback(event);
-            }
-        });
+      // Si un message est reçu
+      if (event.message) {
+        handleMessage(event, sendMessage);  // Passez sendMessage ici
+      } 
+      // Si un postback est reçu
+      else if (event.postback) {
+        handlePostback(event, sendMessage); // Passez sendMessage ici
+      }
+    });
 
-        res.status(200).send('EVENT_RECEIVED');
-    } else {
-        res.sendStatus(404);
-    }
+    res.status(200).send("EVENT_RECEIVED");
+  } else {
+    res.sendStatus(404);
+  }
 });
 
+// Fonction pour envoyer des messages via l'API Messenger
+function sendMessage(recipientId, response) {
+  const request_body = {
+    recipient: {
+      id: recipientId,
+    },
+    message: {
+      text: response,
+    },
+  };
+
+  // Faire une requête POST à l'API Messenger
+  request(
+    {
+      uri: "https://graph.facebook.com/v17.0/me/messages",
+      qs: { access_token: PAGE_ACCESS_TOKEN },
+      method: "POST",
+      json: request_body,
+    },
+    (err, res, body) => {
+      if (!err) {
+        console.log("Message envoyé avec succès !");
+      } else {
+        console.error("Impossible d'envoyer le message : " + err);
+      }
+    }
+  );
+}
+
+// Démarrer le serveur
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
+
