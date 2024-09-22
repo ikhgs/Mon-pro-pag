@@ -1,12 +1,9 @@
-module.exports.handlePostback = async (event, sendMessage) => {
-  const payload = event.postback.payload;
-  const senderID = event.sender.id;
+const handlePostback = async ({ event, api }) => {
+    const payload = event.postback.payload;
 
-  let response;
-
-  if (payload === "GET_STARTED") {
-    response = "Bienvenue ! Envoyez-moi une photo pour commencer.";
-  }
-
-  sendMessage(senderID, response);
+    if (payload) {
+        await api.sendMessage(`Postback reçu : ${payload}`, event.sender.id);
+    }
 };
+
+module.exports = handlePostback;
