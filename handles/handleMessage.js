@@ -1,26 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const { sendMessage } = require('./sendMessage');
+const commands = require("../commands");
 
-const commands = {};
+module.exports.handleMessage = async (event, sendMessage) => {
+  const message = event.message.text;
+  const senderID = event.sender.id;
 
-// Charger les commandes
-fs.readdirSync(path.join(__dirname, '../commands')).forEach(file => {
-    const command = require(`../commands/${file}`);
-    commands[command.config.name] = command;
-});
-
-async function handleMessage(event) {
-    const senderID = event.senderID;
-
-    if (event.message) {
-        const commandName = 'principe'; // Toujours utiliser la commande principe
-        const command = commands[commandName];
-
-        if (command) {
-            command.onChat({ event, api: sendMessage });
-        }
-    }
-}
-
-module.exports = { handleMessage };
+  // Appel à la commande `principe`
+  if (commands.principe) {
+    await commands.principe.onChat({ event, api: { sendMessage } });
+  }
+};
