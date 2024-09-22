@@ -1,8 +1,12 @@
-function handlePostback(event) {
-    const senderID = event.senderID;
-    const payload = event.postback.payload;
+module.exports.handlePostback = async (event, sendMessage) => {
+  const payload = event.postback.payload;
+  const senderID = event.sender.id;
 
-    console.log(`Received postback for user ${senderID} with payload: ${payload}`);
-}
+  let response;
 
-module.exports = { handlePostback };
+  if (payload === "GET_STARTED") {
+    response = "Bienvenue ! Envoyez-moi une photo pour commencer.";
+  }
+
+  sendMessage(senderID, response);
+};
