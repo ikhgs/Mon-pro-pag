@@ -16,8 +16,10 @@ fs.readdirSync(commandsPath).forEach(file => {
 
 module.exports = {
     onChat: async function(event, api) {
-        const message = event.body?.toLowerCase();
-        const senderID = event.senderID;
+        const senderID = event.sender.id;
+
+        // Vérifier si le message existe dans l'événement
+        const message = event.message?.text || '';
 
         // Vérifier si le message commence par une commande
         if (message.startsWith('!')) {
@@ -25,8 +27,11 @@ module.exports = {
             if (commands[commandName] && typeof commands[commandName].onChat === 'function') {
                 await commands[commandName].onChat({ event, api });
             } else {
-                api.sendMessage("Commande inconnue.", event.threadID);
+                api.sendMessage("Commande inconnue.", senderID);
             }
+        } else if (event.message?.attachments) {
+            // Si c'est une image, gérer cela
+            api.sendMessage("Merci d'envoyer une image pour commencer.", senderID);
         }
     }
 };
