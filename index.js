@@ -17,8 +17,8 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 // Vérification de la validité du token
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Importer l'API Messenger pour envoyer des messages
-const request = require('request');
+// Importer axios pour envoyer des requêtes HTTP
+const axios = require('axios');
 
 // Route pour la vérification du webhook
 app.get("/webhook", (req, res) => {
@@ -68,26 +68,17 @@ function sendMessage(recipientId, response) {
     },
   };
 
-  // Faire une requête POST à l'API Messenger
-  request(
-    {
-      uri: "https://graph.facebook.com/v17.0/me/messages",
-      qs: { access_token: PAGE_ACCESS_TOKEN },
-      method: "POST",
-      json: request_body,
-    },
-    (err, res, body) => {
-      if (!err) {
-        console.log("Message envoyé avec succès !");
-      } else {
-        console.error("Impossible d'envoyer le message : " + err);
-      }
-    }
-  );
+  // Faire une requête POST à l'API Messenger avec axios
+  axios.post(`https://graph.facebook.com/v17.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, request_body)
+    .then(() => {
+      console.log("Message envoyé avec succès !");
+    })
+    .catch((err) => {
+      console.error("Impossible d'envoyer le message : " + err);
+    });
 }
 
 // Démarrer le serveur
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
