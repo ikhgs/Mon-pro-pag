@@ -1,62 +1,49 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { onChat } = require('./handles/handleMessage'); // Importation de handleMessage
-const axios = require('axios');
+const dotenv = require('dotenv');
+const handleMessage = require('./handles/handleMessage');
+const handlePostback = require('./handles/handlePostback');
 
-// Charger les variables d'environnement
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+dotenv.config(); // Charger les variables d'environnement
 
 const app = express();
 app.use(bodyParser.json());
 
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+
+// Endpoint pour vérifier le webhook
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode && token === VERIFY_TOKEN) {
-        res.status(200).send(challenge);
-    } else {
-        res.sendStatus(403);
+    if (mode && token) {
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            console.log('Webhook validé');
+            res.status(200).send(challenge);
+        } else {
+            res.sendStatus(403); // Forbidden
+        }
     }
 });
 
-app.post('/webhook', (req, res) => {
-    const body = req.body;
+// Endpoint pour recevoir les messages
+app.post('/webhook', async (req, res) => {
+    const { event } = req.body;
 
-    if (body.object === 'page') {
-        body.entry.forEach(entry => {
-            const event = entry.messaging[0];
-            const senderID = event.sender.id;
-
-            if (event.message) {
-                onChat(event, { sendMessage });
-            }
-        });
-
-        res.status(200).send('EVENT_RECEIVED');
-    } else {
-        res.sendStatus(404);
+    if (event) {
+        if (event.postback) {
+            await handlePostback({ event, api: { sendMessage: sendMessageFunction } }); // Remplacez par votre fonction d'envoi
+        } else {
+            await handleMessage({ event, api: { sendMessage: sendMessageFunction } }); // Remplacez par votre fonction d'envoi
+        }
     }
+
+    res.sendStatus(200);
 });
 
-// Fonction pour envoyer des messages
-function sendMessage(recipientId, messageText) {
-    const requestBody = {
-        recipient: { id: recipientId },
-        message: { text: messageText },
-    };
-
-    axios.post(`https://graph.facebook.com/v14.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, requestBody)
-        .then(response => {
-            console.log('Message envoyé : ', response.data);
-        })
-        .catch(error => {
-            console.error('Impossible d\'envoyer le message : ', error.response.data);
-        });
-}
-
-app.listen(10000, () => {
-    console.log('Server is running on port 10000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
