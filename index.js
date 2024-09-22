@@ -1,39 +1,28 @@
-require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
+const axios = require("axios");
 const { handleMessage } = require("./handles/handleMessage");
-const { handlePostback } = require("./handles/handlePostback");
+require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Utiliser bodyParser pour les requêtes JSON
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
-// PAGE_ACCESS_TOKEN depuis le fichier .env
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-
-// Vérification de la validité du token
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Importer axios pour envoyer des requêtes HTTP
-const axios = require('axios');
-
-// Route pour la vérification du webhook
+// Vérification du webhook
 app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode && token === VERIFY_TOKEN) {
+  if (token === VERIFY_TOKEN) {
     res.status(200).send(challenge);
   } else {
-    res.status(403).send("Invalid token");
+    res.sendStatus(403);
   }
 });
 
-// Route pour recevoir les messages
+// Gestion des messages entrants
 app.post("/webhook", (req, res) => {
   const body = req.body;
 
@@ -41,13 +30,8 @@ app.post("/webhook", (req, res) => {
     body.entry.forEach((entry) => {
       const event = entry.messaging[0];
 
-      // Si un message est reçu
       if (event.message) {
-        handleMessage(event, sendMessage);  // Passez sendMessage ici
-      } 
-      // Si un postback est reçu
-      else if (event.postback) {
-        handlePostback(event, sendMessage); // Passez sendMessage ici
+        handleMessage(event, sendMessage);  // Passe `sendMessage` à `handleMessage`
       }
     });
 
@@ -57,7 +41,7 @@ app.post("/webhook", (req, res) => {
   }
 });
 
-// Fonction pour envoyer des messages via l'API Messenger
+// Fonction pour envoyer un message via l'API Facebook Messenger
 function sendMessage(recipientId, response) {
   const request_body = {
     recipient: {
@@ -68,17 +52,21 @@ function sendMessage(recipientId, response) {
     },
   };
 
-  // Faire une requête POST à l'API Messenger avec axios
-  axios.post(`https://graph.facebook.com/v17.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, request_body)
+  axios
+    .post(
+      `https://graph.facebook.com/v17.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+      request_body
+    )
     .then(() => {
       console.log("Message envoyé avec succès !");
     })
     .catch((err) => {
-      console.error("Impossible d'envoyer le message : " + err);
+      console.error("Erreur lors de l'envoi du message : " + err);
     });
 }
 
-// Démarrer le serveur
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+        
